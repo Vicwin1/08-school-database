@@ -6,6 +6,7 @@ SET NAMES utf8mb4;
 -- Drop dependents before the tables they reference so this script can be rerun.
 DROP TABLE IF EXISTS result;
 DROP TABLE IF EXISTS attendance;
+DROP TABLE IF EXISTS class_transfers;
 DROP TABLE IF EXISTS class_subject;
 DROP TABLE IF EXISTS student;
 DROP TABLE IF EXISTS school_class;
@@ -147,4 +148,31 @@ CREATE TABLE attendance (
     CONSTRAINT fk_attendance_student
         FOREIGN KEY (student_id) REFERENCES student (student_id)
         ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE class_transfers (
+    transfer_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    student_id INT UNSIGNED NOT NULL,
+    from_class_id INT UNSIGNED NOT NULL,
+    to_class_id INT UNSIGNED NOT NULL,
+    transferred_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (transfer_id),
+    KEY idx_class_transfers_student_date (student_id, transferred_at),
+    KEY idx_class_transfers_from_class (from_class_id),
+    KEY idx_class_transfers_to_class (to_class_id),
+    -- RESTRICT preserves the audit trail; CASCADE keeps it attached if a
+    -- student identifier is deliberately changed.
+    CONSTRAINT fk_class_transfers_student
+        FOREIGN KEY (student_id) REFERENCES student (student_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    -- RESTRICT retains both historical class references; CASCADE updates them
+    -- if a class identifier is deliberately changed.
+    CONSTRAINT fk_class_transfers_from_class
+        FOREIGN KEY (from_class_id) REFERENCES school_class (class_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_class_transfers_to_class
+        FOREIGN KEY (to_class_id) REFERENCES school_class (class_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT chk_class_transfers_different_classes
+        CHECK (from_class_id <> to_class_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
